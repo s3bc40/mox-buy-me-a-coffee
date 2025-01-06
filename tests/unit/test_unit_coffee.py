@@ -1,4 +1,4 @@
-from eth_utils import to_wei
+from eth_utils import to_wei, to_bytes
 import boa
 from tests.conftest import SEND_VALUE
 
@@ -44,6 +44,37 @@ def test_owner_can_withdraw(coffee_funded, account):
     assert boa.env.get_balance(coffee_funded.address) == 0
 
 
+def test_get_rate(coffee):
+    assert coffee.get_eth_to_usd_rate(SEND_VALUE) > 0
+
+
+# End workshop to reach coverage > 95%
+def test_receive_eth_and_fund(coffee):
+    # Arrange
+    boa.env.set_balance(RANDOM_USER, SEND_VALUE * 3)
+
+    # Act
+    # boa.env.raw_call(coffee.address, RANDOM_USER, value=SEND_VALUE)
+    coffee.__default__(value=SEND_VALUE, sender=RANDOM_USER)
+
+    # Assert
+    funder = coffee.funders(0)
+    assert funder == RANDOM_USER
+    assert coffee.funder_to_amount_funded(funder) == SEND_VALUE
+
+
+def test_receive_eth_and_fund_fails_without_enough_eth(coffee):
+    # Arrange
+    boa.env.set_balance(RANDOM_USER, SEND_VALUE * 3)
+
+    # Act/Assert
+    try:
+        boa.env.raw_call(coffee.address, RANDOM_USER, value=0)
+        assert False, "Expected revert but did not happen!"
+    except Exception as e:
+        assert "You must spend more ETH!" in str(e), f"Unexpected revert message: {e}"
+
+
 # Mid section workshop
 # def test_multiple_funders_owner_can_withdraw(coffee):
 #     # Arrange
@@ -68,7 +99,3 @@ def test_owner_can_withdraw(coffee_funded, account):
 #     assert starting_fund_me_balance + starting_owner_balance == boa.env.get_balance(
 #         coffee.OWNER()
 #     )
-
-
-def test_get_rate(coffee):
-    assert coffee.get_eth_to_usd_rate(SEND_VALUE) > 0
